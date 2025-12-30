@@ -28,7 +28,7 @@
             overflow: hidden;
         }
 
-        /* Sidebar Styles */
+        /* Sidebar - Desktop */
         #sidebar {
             width: 320px;
             background: var(--sidebar-bg);
@@ -39,19 +39,19 @@
         }
 
         .logo-area {
-            padding: 15px;
+            padding: 20px;
             background: #000;
             text-align: center;
-            font-size: 18px;
+            font-size: 20px;
             font-weight: 600;
             color: var(--primary);
             border-bottom: 1px solid #333;
         }
 
-        .search-box { padding: 10px; background: #121212; }
+        .search-box { padding: 15px; background: #121212; }
         .search-box input {
             width: 100%;
-            padding: 8px;
+            padding: 10px;
             border-radius: 5px;
             border: 1px solid #444;
             background: #2a2a2a;
@@ -61,19 +61,23 @@
         }
 
         #channel-list { flex-grow: 1; overflow-y: auto; }
+        #channel-list::-webkit-scrollbar { width: 8px; }
+        #channel-list::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
+
         .channel-item {
-            padding: 12px 15px;
+            padding: 15px 20px;
             cursor: pointer;
             border-bottom: 1px solid #2a2a2a;
             font-size: 14px;
+            transition: 0.2s;
             display: flex;
             align-items: center;
-            transition: 0.2s;
         }
-        .channel-item:hover { background: #333; }
+        .channel-item:hover { background: #333; padding-left: 25px; }
         .channel-item.active { 
             background: #222; 
             border-left: 4px solid var(--primary);
+            color: white;
             font-weight: bold;
         }
 
@@ -88,26 +92,42 @@
 
         .video-js { width: 100%; height: 100%; }
 
-        /* Responsive Layout */
+        /* Responsive Layout (Mobile) */
         @media (max-width: 768px) {
             body { flex-direction: column; overflow-y: auto; }
             #sidebar { 
                 width: 100%; 
-                height: 50vh; /* মোবাইলে চ্যানেল লিস্টের উচ্চতা */
+                height: 60vh; 
                 border-right: none;
-                border-top: 1px solid #333;
+                order: 2; /* Moves channels below video */
             }
             #main-content {
                 width: 100%;
-                height: 40vh; /* মোবাইলে ভিডিও প্লেয়ারের উচ্চতা */
+                height: 40vh; 
                 position: sticky;
                 top: 0;
                 z-index: 1100;
+                order: 1; /* Keeps video on top */
             }
+            .logo-area { padding: 15px; font-size: 18px; }
         }
     </style>
 </head>
 <body>
+
+    <div id="sidebar">
+        <div class="logo-area">
+            <span><i class="fas fa-play-circle"></i> MangoRichKiD</span>
+        </div>
+        
+        <div class="search-box">
+            <input type="text" id="searchInput" placeholder="Search channels..." onkeyup="filterChannels()">
+        </div>
+        
+        <div id="channel-list">
+            <div style="padding:20px; text-align:center; color:#666;">Loading Channels...</div>
+        </div>
+    </div>
 
     <div id="main-content">
         <video id="my-video" class="video-js vjs-big-play-centered vjs-theme-fantasy" controls preload="auto" data-setup='{"fluid": true}'>
@@ -115,19 +135,8 @@
         </video>
     </div>
 
-    <div id="sidebar">
-        <div class="logo-area">
-            <span><i class="fas fa-play-circle"></i> MangoRichKiD</span>
-        </div>
-        <div class="search-box">
-            <input type="text" id="searchInput" placeholder="Search channels..." onkeyup="filterChannels()">
-        </div>
-        <div id="channel-list">
-            <div style="padding:20px; text-align:center; color:#666;">Loading Channels...</div>
-        </div>
-    </div>
-
     <script src="https://vjs.zencdn.net/8.3.0/video.min.js"></script>
+
     <script>
         const playlistUrl = 'playlist.m3u'; 
         var player = videojs('my-video');
@@ -135,6 +144,7 @@
         const searchInput = document.getElementById('searchInput');
         var allChannels = []; 
 
+        // Fetch and parse M3U playlist
         fetch(playlistUrl)
             .then(response => response.text())
             .then(data => {
@@ -156,7 +166,7 @@
                 });
             })
             .catch(err => {
-                channelList.innerHTML = `<div style="padding:20px; text-align:center; color:red;">Error loading playlist</div>`;
+                channelList.innerHTML = `<div style="padding:20px; text-align:center; color:red;">Error loading playlist. Check if playlist.m3u exists.</div>`;
             });
 
         function createChannelElement(name, url) {
@@ -167,7 +177,10 @@
                 playStream(url);
                 document.querySelectorAll('.channel-item').forEach(el => el.classList.remove('active'));
                 div.classList.add('active');
-                window.scrollTo({ top: 0, behavior: 'smooth' }); // ক্লিক করলে ভিডিওতে স্ক্রল হবে
+                // Scroll to top on mobile when a channel is selected
+                if(window.innerWidth <= 768) {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
             };
             channelList.appendChild(div);
         }
@@ -176,11 +189,19 @@
             const filter = searchInput.value.toUpperCase();
             channelList.innerHTML = ""; 
             const filtered = allChannels.filter(ch => ch.name.toUpperCase().includes(filter));
-            filtered.forEach(ch => createChannelElement(ch.name, ch.url));
+            
+            if(filtered.length === 0) {
+                channelList.innerHTML = `<div style="padding:20px; text-align:center; color:#666;">No channels found</div>`;
+            } else {
+                filtered.forEach(ch => createChannelElement(ch.name, ch.url));
+            }
         }
 
         function playStream(source) {
-            player.src({ src: source, type: 'application/x-mpegURL' });
+            player.src({
+                src: source,
+                type: 'application/x-mpegURL'
+            });
             player.play();
         }
     </script>
