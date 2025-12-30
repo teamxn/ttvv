@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MangoRichKiD TV</title>
+    
+    <link href="https://vjs.zencdn.net/8.3.0/video-js.css" rel="stylesheet" />
+    <link href="https://unpkg.com/@videojs/themes@1/dist/fantasy/index.css" rel="stylesheet">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --primary: #e50914; 
+            --bg-dark: #141414;
+            --sidebar-bg: #1f1f1f;
+            --text-color: #e5e5e5;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            margin: 0;
+            display: flex;
+            height: 100vh;
+            background: var(--bg-dark);
+            color: var(--text-color);
+            overflow: hidden;
+        }
+
+        /* Sidebar Styles */
+        #sidebar {
+            width: 320px;
+            background: var(--sidebar-bg);
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid #333;
+            transition: transform 0.3s ease;
+            z-index: 1000;
+        }
+
+        .logo-area {
+            padding: 20px;
+            background: #000;
+            text-align: center;
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--primary);
+            border-bottom: 1px solid #333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .search-box { padding: 15px; background: #121212; }
+        .search-box input {
+            width: 100%;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #444;
+            background: #2a2a2a;
+            color: white;
+            outline: none;
+            box-sizing: border-box;
+        }
+
+        #channel-list { flex-grow: 1; overflow-y: auto; }
+        #channel-list::-webkit-scrollbar { width: 8px; }
+        #channel-list::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
+
+        .channel-item {
+            padding: 15px 20px;
+            cursor: pointer;
+            border-bottom: 1px solid #2a2a2a;
+            font-size: 14px;
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+        }
+        .channel-item:hover { background: #333; padding-left: 25px; }
+        .channel-item.active { 
+            background: #222; 
+            border-left: 4px solid var(--primary);
+            color: white;
+            font-weight: bold;
+        }
+
+        /* Video Area */
+        #main-content {
+            flex-grow: 1;
+            position: relative;
+            display: flex;
+            background: #000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* Video.js Customization */
+        .video-js {
+            width: 100%;
+            height: 100%;
+        }
+        .vjs-big-play-button {
+            top: 50% !important;
+            left: 50% !important;
+            transform: translate(-50%, -50%);
+            border-radius: 50% !important;
+            background-color: rgba(229, 9, 20, 0.8) !important; 
+            border: none !important;
+        }
+
+        /* Mobile Responsive */
+        .menu-toggle {
+            display: none;
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 2000;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        @media (max-width: 768px) {
+            #sidebar { position: absolute; height: 100%; transform: translateX(-100%); }
+            #sidebar.open { transform: translateX(0); }
+            .menu-toggle { display: block; }
+            .close-btn { display: block; cursor: pointer; }
+        }
+        @media (min-width: 769px) { .close-btn { display: none; } }
+
+    </style>
+</head>
+<body>
+
+    <button class="menu-toggle" onclick="toggleSidebar()"><i class="fas fa-bars"></i> Channels</button>
+
+    <div id="sidebar">
+        <div class="logo-area">
+            <span><i class="fas fa-play-circle"></i> MangoRichKiD</span>
+            <i class="fas fa-times close-btn" onclick="toggleSidebar()"></i>
+        </div>
+        
+        <div class="search-box">
+            <input type="text" id="searchInput" placeholder="Search channels..." onkeyup="filterChannels()">
+        </div>
+        
+        <div id="channel-list">
+            <div style="padding:20px; text-align:center; color:#666;">Loading Channels...</div>
+        </div>
+    </div>
+
+    <div id="main-content">
+        <video id="my-video" class="video-js vjs-big-play-centered vjs-theme-fantasy" controls preload="auto" data-setup='{"fluid": true}'>
+            <p class="vjs-no-js">
+                To view this video please enable JavaScript, and consider upgrading to a web browser that supports HTML5 video
+            </p>
+        </video>
+    </div>
+
+    <script src="https://vjs.zencdn.net/8.3.0/video.min.js"></script>
+
+    <script>
+        const playlistUrl = 'playlist.m3u'; 
+        var player = videojs('my-video'); // Initialize Video.js
+        const channelList = document.getElementById('channel-list');
+        const searchInput = document.getElementById('searchInput');
+        var allChannels = []; 
+
+        fetch(playlistUrl)
+            .then(response => response.text())
+            .then(data => {
+                const lines = data.split('\n');
+                channelList.innerHTML = ""; 
+                let currentName = "";
+
+                lines.forEach(line => {
+                    line = line.trim();
+                    if (line.startsWith('#EXTINF:')) {
+                        let parts = line.split(',');
+                        currentName = parts[1] || "Unknown Channel";
+                    } else if (line.startsWith('http')) {
+                        if(currentName) {
+                            allChannels.push({ name: currentName, url: line });
+                            createChannelElement(currentName, line);
+                        }
+                    }
+                });
+            })
+            .catch(err => {
+                channelList.innerHTML = `<div style="padding:20px; text-align:center; color:red;">Error loading playlist</div>`;
+            });
+
+        function createChannelElement(name, url) {
+            const div = document.createElement('div');
+            div.className = 'channel-item';
+            div.innerHTML = `<i class="fas fa-tv"></i> ${name}`;
+            div.onclick = () => {
+                playStream(url);
+                document.querySelectorAll('.channel-item').forEach(el => el.classList.remove('active'));
+                div.classList.add('active');
+                if(window.innerWidth < 768) toggleSidebar();
+            };
+            channelList.appendChild(div);
+        }
+
+        function filterChannels() {
+            const filter = searchInput.value.toUpperCase();
+            channelList.innerHTML = ""; 
+            const filtered = allChannels.filter(ch => ch.name.toUpperCase().includes(filter));
+            
+            if(filtered.length === 0) {
+                channelList.innerHTML = `<div style="padding:20px; text-align:center; color:#666;">No channels found</div>`;
+            } else {
+                filtered.forEach(ch => createChannelElement(ch.name, ch.url));
+            }
+        }
+
+        function playStream(source) {
+            player.src({
+                src: source,
+                type: 'application/x-mpegURL'
+            });
+            player.play();
+        }
+
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('open');
+        }
+    </script>
+</body>
+</html>
