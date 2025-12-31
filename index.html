@@ -86,28 +86,66 @@
             flex-grow: 1;
             background: #000;
             display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .video-container {
+            flex-grow: 1;
+            display: flex;
             justify-content: center;
             align-items: center;
+            overflow: hidden;
         }
 
         .video-js { width: 100%; height: 100%; }
+
+        /* Breaking News Ticker */
+        .breaking-news {
+            width: 100%;
+            background: #e50914;
+            color: white;
+            display: flex;
+            align-items: center;
+            height: 40px;
+            font-size: 15px;
+            z-index: 10;
+        }
+
+        .ticker-title {
+            background: #000;
+            padding: 0 15px;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
+        .ticker-content {
+            flex-grow: 1;
+            overflow: hidden;
+        }
 
         /* Responsive Layout (Mobile) */
         @media (max-width: 768px) {
             body { flex-direction: column; overflow-y: auto; }
             #sidebar { 
                 width: 100%; 
-                height: 60vh; 
+                height: 55vh; 
                 border-right: none;
-                order: 2; /* Moves channels below video */
+                order: 2; 
             }
             #main-content {
                 width: 100%;
-                height: 40vh; 
+                height: auto;
                 position: sticky;
                 top: 0;
                 z-index: 1100;
-                order: 1; /* Keeps video on top */
+                order: 1; 
+            }
+            .video-container {
+                height: 35vh;
             }
             .logo-area { padding: 15px; font-size: 18px; }
         }
@@ -130,9 +168,20 @@
     </div>
 
     <div id="main-content">
-        <video id="my-video" class="video-js vjs-big-play-centered vjs-theme-fantasy" controls preload="auto" data-setup='{"fluid": true}'>
-            <p class="vjs-no-js">To view this video please enable JavaScript</p>
-        </video>
+        <div class="video-container">
+            <video id="my-video" class="video-js vjs-big-play-centered vjs-theme-fantasy" controls preload="auto" data-setup='{"fluid": true}'>
+                <p class="vjs-no-js">To view this video please enable JavaScript</p>
+            </video>
+        </div>
+
+        <div class="breaking-news">
+            <div class="ticker-title">ব্রেকিং নিউজ</div>
+            <div class="ticker-content">
+                <marquee behavior="scroll" direction="left" scrollamount="6">
+                    MangoRichKiD TV-তে আপনাকে স্বাগতম! আপনার পছন্দের চ্যানেলটি দেখতে বাম পাশের তালিকা থেকে চ্যানেল নির্বাচন করুন। নিরবচ্ছিন্ন স্ট্রিমিং উপভোগ করুন।
+                </marquee>
+            </div>
+        </div>
     </div>
 
     <script src="https://vjs.zencdn.net/8.3.0/video.min.js"></script>
@@ -144,7 +193,6 @@
         const searchInput = document.getElementById('searchInput');
         var allChannels = []; 
 
-        // Fetch and parse M3U playlist
         fetch(playlistUrl)
             .then(response => response.text())
             .then(data => {
@@ -166,7 +214,7 @@
                 });
             })
             .catch(err => {
-                channelList.innerHTML = `<div style="padding:20px; text-align:center; color:red;">Error loading playlist. Check if playlist.m3u exists.</div>`;
+                channelList.innerHTML = `<div style="padding:20px; text-align:center; color:red;">Error loading playlist.</div>`;
             });
 
         function createChannelElement(name, url) {
@@ -177,7 +225,6 @@
                 playStream(url);
                 document.querySelectorAll('.channel-item').forEach(el => el.classList.remove('active'));
                 div.classList.add('active');
-                // Scroll to top on mobile when a channel is selected
                 if(window.innerWidth <= 768) {
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                 }
@@ -189,19 +236,11 @@
             const filter = searchInput.value.toUpperCase();
             channelList.innerHTML = ""; 
             const filtered = allChannels.filter(ch => ch.name.toUpperCase().includes(filter));
-            
-            if(filtered.length === 0) {
-                channelList.innerHTML = `<div style="padding:20px; text-align:center; color:#666;">No channels found</div>`;
-            } else {
-                filtered.forEach(ch => createChannelElement(ch.name, ch.url));
-            }
+            filtered.forEach(ch => createChannelElement(ch.name, ch.url));
         }
 
         function playStream(source) {
-            player.src({
-                src: source,
-                type: 'application/x-mpegURL'
-            });
+            player.src({ src: source, type: 'application/x-mpegURL' });
             player.play();
         }
     </script>
